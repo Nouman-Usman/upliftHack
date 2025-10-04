@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Scale, Send, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeSanitize from 'rehype-sanitize';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  html?: string;
   references?: Array<{ title: string; url: string }>;
 }
 
@@ -31,7 +29,103 @@ export default function Chat() {
   const stripHeaderToken = (text: string) =>
     text.startsWith(HEADER_TOKEN) ? text.slice(HEADER_TOKEN.length).trim() : text;
 
-  // using react-markdown + remark-gfm + rehype-sanitize for safe markdown rendering
+  // --- helper: escape HTML to avoid XSS ---
+  const escapeHtml = (str: string) =>
+    str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  // --- helper: inline formatting (code, bold, italic) ---
+  const processInline = (s: string) =>
+    s
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // --- lightweight markdown -> HTML converter (handles headings, lists, paragraphs, bold, italic, links, inline code) ---
+  const mdToHtml = (md: string) => {
+    // escape first to avoid raw HTML injection
+    const escaped = escapeHtml(md);
+
+    // convert Markdown links [text](url) -> safe anchor tags
+    const withLinks = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, url) => {
+      // escape text and url separately; url kept safe for href attribute
+      const safeText = processInline(text);
+      const safeUrl = escapeHtml(url);
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
+    });
+
+    const lines = withLinks.split(/\r?\n/);
+    let html = '';
+    let inList = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      // headings
+      const h1 = line.match(/^#\s+(.*)/);
+      const h2 = line.match(/^##\s+(.*)/);
+      const h3 = line.match(/^###\s+(.*)/);
+
+      if (h1) {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += `<h1>${processInline(h1[1])}</h1>`;
+        continue;
+      }
+      if (h2) {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += `<h2>${processInline(h2[1])}</h2>`;
+        continue;
+      }
+      if (h3) {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += `<h3>${processInline(h3[1])}</h3>`;
+        continue;
+      }
+
+      // unordered list item (supports *, -, +)
+      const ulMatch = line.match(/^(\*|-|\+)\s+(.*)/);
+      if (ulMatch) {
+        if (!inList) {
+          html += '<ul>';
+          inList = true;
+        }
+        html += `<li>${processInline(ulMatch[2])}</li>`;
+        continue;
+      }
+
+      // blank line -> close list / paragraph separation
+      if (line === '') {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        continue;
+      }
+
+      // normal paragraph line
+      if (inList) {
+        html += '</ul>';
+        inList = false;
+      }
+      html += `<p>${processInline(line)}</p>`;
+    }
+
+    if (inList) html += '</ul>';
+    return html;
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -47,44 +141,79 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
-      const chatHistory = [...messages, userMessage].map((msg) => ({
+      // Format chat history - make sure it's the right format for Flask
+      const previousMessages = [...messages]; // Don't include current message
+      
+      // Take only last 5 exchanges (10 messages) in pairs
+      // For a history like: [msg1, response1, msg2, response2, msg3, response3]
+      // We want to keep the chronological order intact
+      const maxHistoryLength = 10; // 5 exchanges
+      const historyToSend = previousMessages.slice(-maxHistoryLength);
+      
+      // Create a clean history array with just role and content
+      const chatHistoryForBackend = historyToSend.map(msg => ({
         role: msg.role,
-        content: msg.content,
+        content: msg.content
       }));
 
-      const response = await fetch('https://nouman-usman-flask--5000.prod1a.defang.dev/chat', {
+      // Create payload with this history
+      const payload = {
+        question: input,
+        chat_history: chatHistoryForBackend
+      };
+
+      // Enhanced debug logging
+      console.log('[CHAT] Sending question:', input);
+      console.log('[CHAT] Chat history length:', chatHistoryForBackend.length);
+      console.log('[CHAT] Full payload:', JSON.stringify(payload, null, 2));
+      
+      if (chatHistoryForBackend.length > 0) {
+        console.log('[CHAT] First history item:', JSON.stringify(chatHistoryForBackend[0]));
+        console.log('[CHAT] Last history item:', JSON.stringify(chatHistoryForBackend[chatHistoryForBackend.length - 1]));
+      }
+
+      const response = await fetch('http://127.0.0.1:8000/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          question: input,
-          chat_history: chatHistory,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log('[CHAT] Response status:', response.status, response.statusText);
+
       if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        console.error('[CHAT] Error response body:', text);
         throw new Error('Failed to get response');
       }
 
       const data = await response.json();
+      console.log('[CHAT] Backend response type:', typeof data);
+      console.log('[CHAT] Backend returned keys:', Object.keys(data));
+      console.log('[CHAT] Chat response preview:', 
+        typeof data.chat_response === 'string' 
+          ? data.chat_response.substring(0, 100) + '...' 
+          : 'Not a string');
 
       // ensure chat_response is string
       const rawResponse =
         typeof data.chat_response === 'string' ? data.chat_response : String(data.chat_response);
 
-      // strip header token if present and keep markdown string
+      // strip header token if present and convert markdown -> safe HTML
       const cleaned = stripHeaderToken(rawResponse);
+      const html = mdToHtml(cleaned);
 
       const assistantMessage: Message = {
         role: 'assistant',
         content: cleaned,
+        html,
         references: data.references || [],
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('[CHAT] Error:', error);
       const errorMessage: Message = {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
@@ -148,20 +277,12 @@ export default function Chat() {
                         : 'bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 text-white'
                     }`}
                   >
-                    {message.role === 'assistant' ? (
-                      <div className="whitespace-pre-wrap leading-relaxed prose prose-invert">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeSanitize]}
-                          components={{
-                            a: ({ node, ...props }) => (
-                              <a {...props} target="_blank" rel="noopener noreferrer" />
-                            ),
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
+                    {message.html ? (
+                      <div
+                        className="whitespace-pre-wrap leading-relaxed"
+                        // html produced by mdToHtml is escaped then converted -> safe for rendering
+                        dangerouslySetInnerHTML={{ __html: message.html }}
+                      />
                     ) : (
                       <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                     )}
