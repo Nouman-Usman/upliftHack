@@ -1,11 +1,11 @@
 import os
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain_groq import ChatGroq
+from huggingface_hub import InferenceClient
 import uuid
 from langchain.schema import Document
 from langchain_community.tools.tavily_search import TavilySearchResults
@@ -17,11 +17,71 @@ import json
 import logging
 from dotenv import load_dotenv
 import gc
+import numpy as np
 from langchain.schema import HumanMessage, AIMessage, BaseMessage
 from langchain.memory import ConversationBufferWindowMemory
 
 load_dotenv()
+client = InferenceClient(
+    provider="hf-inference",
+    api_key=os.getenv("HF_TOKEN"),
+)
 
+class HuggingFaceInferenceEmbeddings:
+    """Custom embedding class using HuggingFace Inference API instead of local model loading."""
+    
+    def __init__(self, model_name: str = "intfloat/multilingual-e5-large"):
+        self.model_name = model_name
+        self.client = client
+    
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Embed a list of documents using HuggingFace Inference API."""
+        embeddings = []
+        for text in texts:
+            try:
+                result = self.client.feature_extraction(text, model=self.model_name)
+                if isinstance(result, np.ndarray):
+                    embedding = result.tolist()
+                elif isinstance(result, list):
+                    # If it's already a list, check if it contains numpy arrays
+                    if len(result) > 0 and isinstance(result[0], np.ndarray):
+                        embedding = result[0].tolist()
+                    elif len(result) > 0 and isinstance(result[0], list):
+                        embedding = result[0]
+                    else:
+                        embedding = result
+                else:
+                    embedding = result
+                
+                embeddings.append(embedding)
+            except Exception as e:
+                print(f"Error embedding text: {e}")
+                # Return a zero vector as fallback
+                embeddings.append([0.0] * 1024)  # multilingual-e5-large has 1024 dimensions
+        return embeddings
+    
+    def embed_query(self, text: str) -> List[float]:
+        """Embed a single query using HuggingFace Inference API."""
+        try:
+            result = self.client.feature_extraction(text, model=self.model_name)
+            
+            # Convert numpy array to list if needed
+            if isinstance(result, np.ndarray):
+                return result.tolist()
+            elif isinstance(result, list):
+                # If it's already a list, check if it contains numpy arrays
+                if len(result) > 0 and isinstance(result[0], np.ndarray):
+                    return result[0].tolist()
+                elif len(result) > 0 and isinstance(result[0], list):
+                    return result[0]
+                else:
+                    return result
+            else:
+                return result
+        except Exception as e:
+            print(f"Error embedding query: {e}")
+            # Return a zero vector as fallback
+            return [0.0] * 1024  # multilingual-e5-large has 1024 dimensions
 
 class GraphState(TypedDict):
     question: str
@@ -52,10 +112,10 @@ class RAGAgent:
         self.chats_loaded = False
 
     def _initialize_vectorstore(self):
-        embeddings = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
+        embeddings = HuggingFaceInferenceEmbeddings(model_name="intfloat/multilingual-e5-large")
         self.vectorstore = PineconeVectorStore(index=self.index, embedding=embeddings)
         self.retriever = self.vectorstore.as_retriever()
-        print("Vectorstore initialized and documents added.")
+        print("Vectorstore initialized using HuggingFace Inference API.")
 
     def _initialize_prompts(self):
         self.analyze_sentiment_prompt = PromptTemplate(

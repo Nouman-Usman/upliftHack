@@ -1,0 +1,69 @@
+# Default .dockerignore file for Defang
+**/__pycache__
+**/.direnv
+**/.DS_Store
+**/.envrc
+**/.git
+**/.github
+**/.idea
+**/.next
+**/.vscode
+**/compose.*.yaml
+**/compose.*.yml
+**/compose.yaml
+**/compose.yml
+**/docker-compose.*.yaml
+**/docker-compose.*.yml
+**/docker-compose.yaml
+**/docker-compose.yml
+**/node_modules
+**/Thumbs.db
+Dockerfile
+*.Dockerfile
+# Ignore our own binary, but only in the root to avoid ignoring subfolders
+defang
+defang.exe
+# Ignore our project-level state
+.defang
+
+# Python cache files and virtual environments
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+env/
+ENV/
+
+# Model cache directories (these will be downloaded in the container)
+.cache/
+models/
+model_cache/
+.huggingface/
+
+# Large binary files that should be downloaded in container
+*.bin
+*.safetensors
+*.onnx
+*.pkl
+*.h5
+*.hdf5
+
+# Logs and temporary files
+*.log
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local environment files
+.env
+.env.local
+.env.*.local

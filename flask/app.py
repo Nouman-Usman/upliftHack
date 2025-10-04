@@ -8,8 +8,15 @@ app = Flask(__name__)
 app.config['DEBUG'] = False
 app.config['TESTING'] = False
 
-# Initialize RAG agent
-rag_agent = RAGAgent()
+# Lazy initialize RAG agent to avoid heavy startup failures
+rag_agent = None
+
+
+def get_rag_agent():
+    global rag_agent
+    if rag_agent is None:
+        rag_agent = RAGAgent()
+    return rag_agent
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -21,7 +28,8 @@ def chat():
     chat_history = data.get('chat_history', [])
 
     try:
-        response = rag_agent.run(question, chat_history)
+        agent = get_rag_agent()
+        response = agent.run(question, chat_history)
         return jsonify(response)
     except Exception as e:
         app.logger.error(f'Error processing question: {str(e)}')
@@ -31,9 +39,11 @@ def chat():
 def health_check():
     return jsonify({'status': 'healthy'}), 200
 
+@app.route('/', methods=['GET'])
+def root():
+    return jsonify({'message': 'Flask app is running'}), 200
+
 if __name__ == '__main__':
-    # For development
-    app.run(debug=True)
-else:
-    # For production (when using WSGI)
-    application = app
+    port = int(os.environ.get('PORT', 5000))
+    host = os.environ.get('HOST', '0.0.0.0')
+    app.run(host=host, port=port, debug=False)
