@@ -1,0 +1,13 @@
+.env
+env
+.vscode
+__pycache__
+.chainlit
+venv
+.files
+.venv
+# Ignore uploaded files but keep the directory
+uploads/profile_images/*
+!uploads/profile_images/.gitkeep
+# backend\app.log
+app.log
