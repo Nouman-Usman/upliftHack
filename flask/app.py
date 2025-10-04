@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
 from main import RAGAgent
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
-
+CORS(app)
 # Production configuration
 app.config['DEBUG'] = False
 app.config['TESTING'] = False
@@ -44,6 +45,6 @@ def root():
     return jsonify({'message': 'Flask app is running'}), 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8000))
     host = os.environ.get('HOST', '0.0.0.0')
     app.run(host=host, port=port, debug=False)

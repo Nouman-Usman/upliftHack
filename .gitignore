@@ -12,3 +12,5 @@ uploads/profile_images/*
 !uploads/profile_images/.gitkeep
 # backend\app.log
 app.log
+frontend/node_modules
+frontend/.env*
