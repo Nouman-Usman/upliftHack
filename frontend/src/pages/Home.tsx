@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Scale, Gavel, Shield, ChevronRight } from 'lucide-react';
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -13,14 +14,28 @@ export default function Home() {
           <Scale className="w-8 h-8 text-amber-400" />
           <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">
             Apna Waqeel
-          </h1>
+          </h1>   
         </div>
-        <button
-          onClick={() => navigate('/chat')}
-          className="px-6 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-amber-500/50"
-        >
-          Get Started
-        </button>
+        
+        {/* Updated authentication UI */}
+        <div className="flex items-center gap-4">
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-all duration-300">
+                Sign In
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <button
+              onClick={() => navigate('/chat')}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg transition-all duration-300 mr-4"
+            >
+              Open Chat
+            </button>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+        </div>
       </nav>
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-32">
@@ -41,13 +56,25 @@ export default function Home() {
               Get instant answers to your legal questions with AI-powered precision. Navigate complex legal matters with confidence and clarity.
             </p>
 
-            <button
-              onClick={() => navigate('/chat')}
-              className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-900 text-lg font-bold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-amber-500/50 animate-fade-in-delay-3"
-            >
-              Start Legal Chat
-              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            {/* Different buttons for signed-in and signed-out states */}
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-900 text-lg font-bold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-amber-500/50 animate-fade-in-delay-3">
+                  Sign In to Start
+                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </SignInButton>
+            </SignedOut>
+            
+            <SignedIn>
+              <button
+                onClick={() => navigate('/chat')}
+                className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-900 text-lg font-bold rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-amber-500/50 animate-fade-in-delay-3"
+              >
+                Start Legal Chat
+                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </SignedIn>
           </div>
 
           <div className="flex-1 relative animate-float">

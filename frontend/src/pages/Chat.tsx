@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Scale, Send, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -244,138 +245,172 @@ export default function Chat() {
               Apna Waqeel – Legal Assistant
             </h1>
           </button>
+          
+          {/* Add authentication UI components */}
+          <div className="flex items-center gap-4">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg font-medium transition-all">
+                  Sign In
+                </button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
+          </div>
         </div>
       </nav>
 
-      <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 overflow-hidden flex gap-6">
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto space-y-6 mb-6 pr-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-            {messages.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center space-y-4 animate-fade-in">
-                  <div className="inline-block p-6 bg-amber-500/10 rounded-full">
-                    <Scale className="w-16 h-16 text-amber-400" />
+      <SignedIn>
+        {/* Existing chat UI remains the same */}
+        <div className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 overflow-hidden flex gap-6">
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1 overflow-y-auto space-y-6 mb-6 pr-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+              {messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center space-y-4 animate-fade-in">
+                    <div className="inline-block p-6 bg-amber-500/10 rounded-full">
+                      <Scale className="w-16 h-16 text-amber-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white">Ask Your Legal Question</h2>
+                    <p className="text-slate-400 max-w-md">
+                      Type your question below and get instant legal guidance with verified references.
+                    </p>
                   </div>
-                  <h2 className="text-2xl font-bold text-white">Ask Your Legal Question</h2>
-                  <p className="text-slate-400 max-w-md">
-                    Type your question below and get instant legal guidance with verified references.
-                  </p>
                 </div>
-              </div>
-            ) : (
-              messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  } animate-slide-up`}
-                >
+              ) : (
+                messages.map((message, index) => (
                   <div
-                    className={`max-w-[80%] rounded-2xl px-6 py-4 ${
-                      message.role === 'user'
-                        ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-900'
-                        : 'bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 text-white'
-                    }`}
+                    key={index}
+                    className={`flex ${
+                      message.role === 'user' ? 'justify-end' : 'justify-start'
+                    } animate-slide-up`}
                   >
-                    {message.html ? (
-                      <div
-                        className="whitespace-pre-wrap leading-relaxed"
-                        // html produced by mdToHtml is escaped then converted -> safe for rendering
-                        dangerouslySetInnerHTML={{ __html: message.html }}
-                      />
-                    ) : (
-                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                    )}
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-6 py-4 ${
+                        message.role === 'user'
+                          ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-900'
+                          : 'bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 text-white'
+                      }`}
+                    >
+                      {message.html ? (
+                        <div
+                          className="whitespace-pre-wrap leading-relaxed"
+                          // html produced by mdToHtml is escaped then converted -> safe for rendering
+                          dangerouslySetInnerHTML={{ __html: message.html }}
+                        />
+                      ) : (
+                        <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      )}
 
-                    {message.references && message.references.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-2">
-                        <p className="text-sm font-semibold text-amber-400">References:</p>
-                        {message.references.map((ref, refIndex) => (
-                          <a
-                            key={refIndex}
-                            href={ref.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-sm text-slate-300 hover:text-amber-400 transition-colors group"
-                          >
-                            <ExternalLink className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                            <span className="underline">{ref.title}</span>
-                          </a>
-                        ))}
-                      </div>
-                    )}
+                      {message.references && message.references.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-2">
+                          <p className="text-sm font-semibold text-amber-400">References:</p>
+                          {message.references.map((ref, refIndex) => (
+                            <a
+                              key={refIndex}
+                              href={ref.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-sm text-slate-300 hover:text-amber-400 transition-colors group"
+                            >
+                              <ExternalLink className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                              <span className="underline">{ref.title}</span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {isLoading && (
+                <div className="flex justify-start animate-slide-up">
+                  <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-6 py-4">
+                    <div className="flex gap-2">
+                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce delay-100"></div>
+                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce delay-200"></div>
+                    </div>
                   </div>
                 </div>
-              ))
-            )}
+              )}
 
-            {isLoading && (
-              <div className="flex justify-start animate-slide-up">
-                <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-6 py-4">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce delay-100"></div>
-                    <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce delay-200"></div>
-                  </div>
-                </div>
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="relative">
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask your legal question..."
+                  disabled={isLoading}
+                  className="flex-1 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl px-6 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all disabled:opacity-50"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  className="px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-900 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 hover:shadow-lg hover:shadow-amber-500/50 group"
+                >
+                  <Send className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                </button>
               </div>
-            )}
-
-            <div ref={messagesEndRef} />
+            </div>
           </div>
 
-          <div className="relative">
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask your legal question..."
-                disabled={isLoading}
-                className="flex-1 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl px-6 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all disabled:opacity-50"
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                className="px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-900 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 hover:shadow-lg hover:shadow-amber-500/50 group"
-              >
-                <Send className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-              </button>
+          {messages.some((msg) => msg.references && msg.references.length > 0) && (
+            <div className="hidden lg:block w-80 animate-slide-in-right">
+              <div className="sticky top-24 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <ExternalLink className="w-5 h-5 text-amber-400" />
+                  Legal References
+                </h3>
+                <div className="space-y-3">
+                  {messages
+                    .filter((msg) => msg.references && msg.references.length > 0)
+                    .flatMap((msg) => msg.references!)
+                    .map((ref, index) => (
+                      <a
+                        key={index}
+                        href={ref.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-4 bg-slate-900/50 rounded-lg border border-slate-700/50 hover:border-amber-500/50 transition-all group hover:scale-105"
+                      >
+                        <p className="text-sm font-medium text-white group-hover:text-amber-400 transition-colors">
+                          {ref.title}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1 truncate">{ref.url}</p>
+                      </a>
+                    ))}
+                </div>
+              </div>
             </div>
+          )}
+        </div>
+      </SignedIn>
+      
+      <SignedOut>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center p-8 max-w-md">
+            <Scale className="w-16 h-16 text-amber-400 mx-auto mb-6" />
+            <h2 className="text-2xl font-bold text-white mb-4">Sign in to Access Legal Assistance</h2>
+            <p className="text-slate-400 mb-6">
+              Please sign in to get answers to your legal questions and access professional legal guidance.
+            </p>
+            <SignInButton mode="modal">
+              <button className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-900 rounded-xl font-semibold transition-all">
+                Sign In to Continue
+              </button>
+            </SignInButton>
           </div>
         </div>
-
-        {messages.some((msg) => msg.references && msg.references.length > 0) && (
-          <div className="hidden lg:block w-80 animate-slide-in-right">
-            <div className="sticky top-24 bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <ExternalLink className="w-5 h-5 text-amber-400" />
-                Legal References
-              </h3>
-              <div className="space-y-3">
-                {messages
-                  .filter((msg) => msg.references && msg.references.length > 0)
-                  .flatMap((msg) => msg.references!)
-                  .map((ref, index) => (
-                    <a
-                      key={index}
-                      href={ref.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block p-4 bg-slate-900/50 rounded-lg border border-slate-700/50 hover:border-amber-500/50 transition-all group hover:scale-105"
-                    >
-                      <p className="text-sm font-medium text-white group-hover:text-amber-400 transition-colors">
-                        {ref.title}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1 truncate">{ref.url}</p>
-                    </a>
-                  ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      </SignedOut>
     </div>
   );
 }
